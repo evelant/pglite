@@ -2,20 +2,30 @@ import type { PGliteInterface, Transaction } from './interface.js'
 import { serialize as serializeProtocol } from '@electric-sql/pg-protocol'
 import { parseDescribeStatementResults } from './parse.js'
 import { TEXT } from './types.js'
+import pako from 'pako';
+import { postgresWasmGzBase64 } from './generated/postgresWasmGzBase64';
+import { postgresDataGzipBase64 } from './generated/postgresDataGzipBase64';
 
 export const IN_NODE =
   typeof process === 'object' &&
   typeof process.versions === 'object' &&
   typeof process.versions.node === 'string'
 
-let wasmDownloadPromise: Promise<Response> | undefined
+/**
+ * Decodes a Base64 string containing gzipped data and returns the decompressed Uint8Array.
+ * @param {string} base64String - The Base64 encoded string containing gzipped data.
+ * @returns {Uint8Array} - The decompressed data as a Uint8Array.
+ */
+function decodeAndDecompress(base64String: string): Uint8Array {
+  const gzippedData = Buffer.from(base64String, "base64");
+  const decompressedData = pako.inflate(gzippedData);
+  return decompressedData;
+}
 
-export async function startWasmDownload() {
-  if (IN_NODE || wasmDownloadPromise) {
-    return
-  }
-  const moduleUrl = new URL('../release/postgres.wasm', import.meta.url)
-  wasmDownloadPromise = fetch(moduleUrl)
+export function getPostgresWasm(): ArrayBuffer {
+  const decodedDecompressed = decodeAndDecompress(postgresWasmGzBase64)
+  // fs.writeFileSync('/tmp/postgres.wasm', decodedDecompressed)
+  return decodedDecompressed.buffer
 }
 
 // This is a global cache of the PGlite Wasm module to avoid having to re-download or
@@ -39,44 +49,17 @@ export async function instantiateWasm(
       module: module || cachedWasmModule!,
     }
   }
-  const moduleUrl = new URL('../release/postgres.wasm', import.meta.url)
-  if (IN_NODE) {
-    const fs = await import('fs/promises')
-    const buffer = await fs.readFile(moduleUrl)
-    const { module: newModule, instance } = await WebAssembly.instantiate(
-      buffer,
-      imports,
-    )
-    cachedWasmModule = newModule
-    return {
-      instance,
-      module: newModule,
-    }
-  } else {
-    if (!wasmDownloadPromise) {
-      wasmDownloadPromise = fetch(moduleUrl)
-    }
-    const response = await wasmDownloadPromise
-    const { module: newModule, instance } =
-      await WebAssembly.instantiateStreaming(response, imports)
-    cachedWasmModule = newModule
-    return {
-      instance,
-      module: newModule,
-    }
+  const { module: newModule, instance } = await WebAssembly.instantiate(getPostgresWasm(), imports)
+  cachedWasmModule = newModule
+  return {
+    instance,
+    module: newModule,
   }
 }
 
-export async function getFsBundle(): Promise<ArrayBuffer> {
-  const fsBundleUrl = new URL('../release/postgres.data', import.meta.url)
-  if (IN_NODE) {
-    const fs = await import('fs/promises')
-    const fileData = await fs.readFile(fsBundleUrl)
-    return fileData.buffer
-  } else {
-    const response = await fetch(fsBundleUrl)
-    return response.arrayBuffer()
-  }
+export function getFsBundle(): ArrayBuffer {
+  const decodedDecompressed = decodeAndDecompress(postgresDataGzipBase64)
+  return decodedDecompressed.buffer
 }
 
 export const uuid = (): string => {

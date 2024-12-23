@@ -19,7 +19,7 @@ import type {
   PGliteOptions,
 } from './interface.js'
 import PostgresModFactory, { type PostgresMod } from './postgresMod.js'
-import { getFsBundle, instantiateWasm, startWasmDownload } from './utils.js'
+import { getFsBundle, instantiateWasm } from './utils.js'
 
 // Importing the source as the built version is not ESM compatible
 import { Parser as ProtocolParser, serialize } from '@electric-sql/pg-protocol'
@@ -193,25 +193,7 @@ export class PGlite
       ...(this.debug ? ['-d', this.debug.toString()] : []),
     ]
 
-    if (!options.wasmModule) {
-      // Start the wasm download in the background so it's ready when we need it
-      startWasmDownload()
-    }
-
-    // Get the fs bundle
-    // We don't await the loading of the fs bundle at this point as we can continue
-    // with other work.
-    // It's resolved value `fsBundleBuffer` is set and used in `getPreloadedPackage`
-    // which is called via `PostgresModFactory` after we have awaited
-    // `fsBundleBufferPromise` below.
-    const fsBundleBufferPromise = options.fsBundle
-      ? options.fsBundle.arrayBuffer()
-      : getFsBundle()
-    let fsBundleBuffer: ArrayBuffer
-    fsBundleBufferPromise.then((buffer) => {
-      fsBundleBuffer = buffer
-    })
-
+    const fsBundleBuffer = getFsBundle()
     let emscriptenOpts: Partial<PostgresMod> = {
       WASM_PREFIX,
       arguments: args,
@@ -348,9 +330,6 @@ export class PGlite
     }
     emscriptenOpts['pg_extensions'] = extensionBundlePromises
 
-    // Await the fs bundle - we do this just before calling PostgresModFactory
-    // as it needs the fs bundle to be ready.
-    await fsBundleBufferPromise
 
     // Load the database engine
     this.mod = await PostgresModFactory(emscriptenOpts)
