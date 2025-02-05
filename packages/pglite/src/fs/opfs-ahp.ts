@@ -1,6 +1,5 @@
-import { BaseFilesystem, ERRNO_CODES, type FsStats } from './base.js'
+import { BaseFilesystem, ERRNO_CODES, Filesystem, FSGetter, type FsStats } from './base.js'
 import type { PostgresMod } from '../postgresMod.js'
-import { PGlite } from '../pglite.js'
 
 export interface OpfsAhpOptions {
   initialPoolSize?: number
@@ -106,9 +105,9 @@ export class OpfsAhpFS extends BaseFilesystem {
     this.maintainedPoolSize = maintainedPoolSize
   }
 
-  async init(pg: PGlite, opts: Partial<PostgresMod>) {
+  async init(FS: FSGetter, opts: Partial<PostgresMod>) {
     await this.#init()
-    return super.init(pg, opts)
+    return super.init(FS, opts)
   }
 
   async syncToFs(relaxedDurability = false) {
@@ -125,7 +124,7 @@ export class OpfsAhpFS extends BaseFilesystem {
     }
     this.#stateSH.flush()
     this.#stateSH.close()
-    this.pg!.Module.FS.quit()
+    this.FS!().quit()
   }
 
   async #init() {
@@ -718,6 +717,9 @@ export class OpfsAhpFS extends BaseFilesystem {
       ah = await ah.getDirectoryHandle(part, { create: options?.create })
     }
     return ah
+  }
+  clone(): Promise<Filesystem> {
+    throw new Error('Method not implemented.')
   }
 }
 

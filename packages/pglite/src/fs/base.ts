@@ -1,5 +1,4 @@
-import type { PostgresMod } from '../postgresMod.js'
-import type { PGlite } from '../pglite.js'
+import type { FS, PostgresMod } from '../postgresMod.js'
 import { dumpTar, type DumpTarCompressionOptions } from './tarUtils.js'
 
 export const WASM_PREFIX = '/tmp/pglite'
@@ -7,6 +6,7 @@ export const PGDATA = WASM_PREFIX + '/' + 'base'
 
 export type FsType = 'nodefs' | 'idbfs' | 'memoryfs' | 'opfs-ahp'
 
+export type FSGetter = () => FS
 /**
  * Filesystem interface.
  * All virtual filesystems that are compatible with PGlite must implement
@@ -17,7 +17,7 @@ export interface Filesystem {
    * Initiate the filesystem and return the options to pass to the emscripten module.
    */
   init(
-    pg: PGlite,
+    fs: FSGetter,
     emscriptenOptions: Partial<PostgresMod>,
   ): Promise<{ emscriptenOpts: Partial<PostgresMod> }>
 
@@ -55,14 +55,14 @@ export interface Filesystem {
  */
 export class EmscriptenBuiltinFilesystem implements Filesystem {
   protected dataDir?: string
-  protected pg?: PGlite
+  protected FS?: FSGetter
 
   constructor(dataDir?: string) {
     this.dataDir = dataDir
   }
 
-  async init(pg: PGlite, emscriptenOptions: Partial<PostgresMod>) {
-    this.pg = pg
+  async init(FS: FSGetter, emscriptenOptions: Partial<PostgresMod>) {
+    this.FS = FS
     return { emscriptenOpts: emscriptenOptions }
   }
 
@@ -73,11 +73,13 @@ export class EmscriptenBuiltinFilesystem implements Filesystem {
   async closeFs() {}
 
   async dumpTar(dbname: string, compression?: DumpTarCompressionOptions) {
-    return dumpTar(this.pg!.Module.FS, PGDATA, dbname, compression)
+    return dumpTar(this.FS!(), PGDATA, dbname, compression)
   }
 
-  clone(): Promise<Filesystem> {
-    throw new Error('Method not implemented.')
+  async clone(): Promise<Filesystem> {
+    // const dbname = this.dataDir?.split('/').pop() ?? 'pgdata'
+    // this.dumpTar(dbname, 'none')
+    throw new Error('NotImplemented')
   }
 }
 
@@ -87,7 +89,7 @@ export class EmscriptenBuiltinFilesystem implements Filesystem {
  */
 export abstract class BaseFilesystem implements Filesystem {
   protected dataDir?: string
-  protected pg?: PGlite
+  protected FS?: FSGetter
   readonly debug: boolean
 
   constructor(dataDir?: string, { debug = false }: { debug?: boolean } = {}) {
@@ -102,11 +104,11 @@ export abstract class BaseFilesystem implements Filesystem {
   async closeFs() {}
 
   async dumpTar(dbname: string, compression?: DumpTarCompressionOptions) {
-    return dumpTar(this.pg!.Module.FS, PGDATA, dbname, compression)
+    return dumpTar(this.FS!(), PGDATA, dbname, compression)
   }
 
-  async init(pg: PGlite, emscriptenOptions: Partial<PostgresMod>) {
-    this.pg = pg
+  async init(FS: FSGetter, emscriptenOptions: Partial<PostgresMod>) {
+    this.FS = FS
     const options: Partial<PostgresMod> = {
       ...emscriptenOptions,
       preRun: [

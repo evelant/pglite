@@ -1,10 +1,9 @@
-import { EmscriptenBuiltinFilesystem, PGDATA } from './base.js'
+import { EmscriptenBuiltinFilesystem, FSGetter, PGDATA } from './base.js'
 import type { PostgresMod } from '../postgresMod.js'
-import { PGlite } from '../pglite.js'
 
 export class IdbFs extends EmscriptenBuiltinFilesystem {
-  async init(pg: PGlite, opts: Partial<PostgresMod>) {
-    this.pg = pg
+  async init(FS: FSGetter, opts: Partial<PostgresMod>) {
+    this.FS = FS
     const options: Partial<PostgresMod> = {
       ...opts,
       preRun: [
@@ -28,7 +27,7 @@ export class IdbFs extends EmscriptenBuiltinFilesystem {
 
   initialSyncFs() {
     return new Promise<void>((resolve, reject) => {
-      this.pg!.Module.FS.syncfs(true, (err: any) => {
+      this.FS!().syncfs(true, (err: any) => {
         if (err) {
           reject(err)
         } else {
@@ -40,7 +39,7 @@ export class IdbFs extends EmscriptenBuiltinFilesystem {
 
   syncToFs(_relaxedDurability?: boolean) {
     return new Promise<void>((resolve, reject) => {
-      this.pg!.Module.FS.syncfs(false, (err: any) => {
+      this.FS!().syncfs(false, (err: any) => {
         if (err) {
           reject(err)
         } else {
@@ -56,10 +55,10 @@ export class IdbFs extends EmscriptenBuiltinFilesystem {
     // This needs to be handled in application code if you want to delete the
     // database after it has been closed. If you try to delete the database
     // before it has fully closed it will throw a blocking error.
-    const indexedDb = this.pg!.Module.FS.filesystems.IDBFS.dbs[this.dataDir!]
+    const indexedDb = this.FS!().filesystems.IDBFS.dbs[this.dataDir!]
     if (indexedDb) {
       indexedDb.close()
     }
-    this.pg!.Module.FS.quit()
+    this.FS!().quit()
   }
 }

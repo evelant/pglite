@@ -306,7 +306,7 @@ export class PGlite
     }
 
     const { emscriptenOpts: amendedEmscriptenOpts } = await this.fs!.init(
-      this,
+      () => this.Module.FS,
       emscriptenOpts,
     )
     emscriptenOpts = amendedEmscriptenOpts
