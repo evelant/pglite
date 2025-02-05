@@ -15,7 +15,7 @@ export class NodeFS extends EmscriptenBuiltinFilesystem {
   }
 
   async init(FS: FSGetter, opts: Partial<PostgresMod>) {
-    this.FS = FS
+    this.FSGetter = FS
     const options: Partial<PostgresMod> = {
       ...opts,
       preRun: [
@@ -31,6 +31,6 @@ export class NodeFS extends EmscriptenBuiltinFilesystem {
   }
 
   async closeFs(): Promise<void> {
-    this.FS!().quit()
+    this.FSGetter!().quit()
   }
 }

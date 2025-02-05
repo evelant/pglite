@@ -55,14 +55,14 @@ export interface Filesystem {
  */
 export class EmscriptenBuiltinFilesystem implements Filesystem {
   protected dataDir?: string
-  protected FS?: FSGetter
+  protected FSGetter?: FSGetter
 
   constructor(dataDir?: string) {
     this.dataDir = dataDir
   }
 
-  async init(FS: FSGetter, emscriptenOptions: Partial<PostgresMod>) {
-    this.FS = FS
+  async init(FSGetter: FSGetter, emscriptenOptions: Partial<PostgresMod>) {
+    this.FSGetter = FSGetter
     return { emscriptenOpts: emscriptenOptions }
   }
 
@@ -73,7 +73,7 @@ export class EmscriptenBuiltinFilesystem implements Filesystem {
   async closeFs() {}
 
   async dumpTar(dbname: string, compression?: DumpTarCompressionOptions) {
-    return dumpTar(this.FS!(), PGDATA, dbname, compression)
+    return dumpTar(this.FSGetter!(), PGDATA, dbname, compression)
   }
 
   async clone(): Promise<Filesystem> {
