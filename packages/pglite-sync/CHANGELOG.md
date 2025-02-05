@@ -1,5 +1,11 @@
 # @electric-sql/pglite-sync
 
+## 0.2.19
+
+### Patch Changes
+
+- 67bf759: shapeKey in syncShapeToTable is now mandatory but nullable; passing null will not persist the shape
+
 ## 0.2.18
 
 ### Patch Changes
