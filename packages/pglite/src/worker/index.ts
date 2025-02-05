@@ -470,6 +470,10 @@ export class PGliteWorker
       await this.#rpc('_releaseTransactionLock')
     }
   }
+
+  clone(): Promise<PGliteInterface> {
+    throw new Error('Method not implemented.')
+  }
 }
 
 export interface WorkerOptions {

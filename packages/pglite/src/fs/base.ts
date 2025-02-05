@@ -43,6 +43,11 @@ export interface Filesystem {
    * Close the filesystem.
    */
   closeFs(): Promise<void>
+
+  /**
+   * Clones this fs
+   */
+  clone(): Promise<Filesystem>
 }
 
 /**
@@ -69,6 +74,10 @@ export class EmscriptenBuiltinFilesystem implements Filesystem {
 
   async dumpTar(dbname: string, compression?: DumpTarCompressionOptions) {
     return dumpTar(this.pg!.Module.FS, PGDATA, dbname, compression)
+  }
+
+  clone(): Promise<Filesystem> {
+    throw new Error('Method not implemented.')
   }
 }
 
@@ -151,6 +160,7 @@ export abstract class BaseFilesystem implements Filesystem {
     length: number, // Number of bytes to write
     position: number, // Position in file to write to
   ): number
+  abstract clone(): Promise<Filesystem>
 }
 
 export type FsStats = {

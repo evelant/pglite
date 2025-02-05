@@ -794,4 +794,12 @@ export class PGlite
   _runExclusiveTransaction<T>(fn: () => Promise<T>): Promise<T> {
     return this.#transactionMutex.runExclusive(fn)
   }
+
+  /**
+   * Clone this instance of pglite
+   */
+  async clone(): Promise<PGliteInterface> {
+    const fs = await this.fs!.clone()
+    return new PGlite({fs});
+  }
 }
